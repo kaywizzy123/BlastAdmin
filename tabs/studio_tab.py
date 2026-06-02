@@ -113,7 +113,8 @@ class StudioTab(QWidget):
         path, _ = QFileDialog.getSaveFileName(
             self, "Select Registry File",
             self._registry_path.text() or constants.STUDIO_ROOT,
-            "JSON files (*.json)"
+            "JSON files (*.json)",
+            options=QFileDialog.Option.DontUseNativeDialog,
         )
         if path:
             self._registry_path.setText(path)

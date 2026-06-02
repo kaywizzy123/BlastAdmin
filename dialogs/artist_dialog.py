@@ -85,15 +85,21 @@ class ArtistDialog(QDialog):
         if pidx >= 0:
             self._perm_combo.setCurrentIndex(pidx)
 
-        # Lock username when editing (username is the key)
         if self._is_edit:
-            self._username_field.setReadOnly(True)
-            self._username_field.setStyleSheet(
-                f"background: {constants.ACCENT}; color: {constants.TEXT_SEC};"
-                f"border: 1px solid {constants.SPLITTER_COLOR}; border-radius: 4px; padding: 4px 8px;"
+            self._username_field.setToolTip(
+                "Changing the username will break any existing filename matches\n"
+                "and session history linked to the old username."
             )
 
         form.addRow(_label("Username *"), self._username_field)
+
+        # Warning shown under username field when editing
+        if self._is_edit:
+            username_warn = QLabel("⚠  Changing username breaks existing filename links")
+            username_warn.setStyleSheet(
+                f"color: {constants.FAIL}; font-size: 10px; background: transparent;"
+            )
+            form.addRow("", username_warn)
         form.addRow(_label("Display Name"), self._name_field)
         form.addRow(_label("Email"), self._email_field)
         form.addRow(_label("Department"), self._dept_combo)

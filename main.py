@@ -95,6 +95,7 @@ class MainWindow(QMainWindow):
         self._tabs.addTab(self._departments_tab, "  Departments  ")
         self._tabs.addTab(self._security_tab,    "  Security  ")
         self._tabs.currentChanged.connect(self._on_tab_changed)
+        self._studio_tab.registry_changed.connect(self._on_registry_changed)
 
         # ── Layout ────────────────────────────────────────────────────────
         central = QWidget()
@@ -114,6 +115,11 @@ class MainWindow(QMainWindow):
         self._path_lbl.setStyleSheet(
             f"font-size: 10px; color: {color}; background: transparent;"
         )
+
+    def _on_registry_changed(self):
+        """Studio tab saved a new path — refresh everything that reads the registry."""
+        self._refresh_path_label()
+        self._artists_tab.refresh()
 
     def _on_tab_changed(self, index: int):
         self._refresh_path_label()

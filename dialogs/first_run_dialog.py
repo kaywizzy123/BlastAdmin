@@ -152,13 +152,22 @@ class FirstRunDialog(QDialog):
             self._error_lbl.setVisible(True)
             return
 
-        constants.STUDIO_NAME  = name
+        constants.STUDIO_NAME   = name
         constants.REGISTRY_PATH = self._registry_path.text().strip()
 
-        # Create artists.json skeleton if it doesn't exist yet
-        data = registry.load()          # returns skeleton if file missing
-        data["studio_name"] = name
-        registry.save(data)             # creates the file
-        registry.save_config()          # saves bladmin_config.json
+        from pathlib import Path
+        path = registry.registry_path()
 
+        if path.exists():
+            # File already exists (e.g. pointing at a shared network registry).
+            # Preserve all existing artists — only update studio_name.
+            data = registry.load()
+            data["studio_name"] = name
+            registry.save(data)
+        else:
+            # New studio setup — create a fresh skeleton at the chosen path.
+            data = {"studio_name": name, "artists": []}
+            registry.save(data)
+
+        registry.save_config()
         self.accept()

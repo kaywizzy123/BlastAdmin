@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QTableWidget, QTableWidgetItem, QPushButton,
     QLabel, QLineEdit, QHeaderView, QMessageBox,
-    QAbstractItemView, QMenu,
+    QAbstractItemView, QMenu, QDialog,
 )
 from PyQt5.QtCore import Qt, QSize
 from PyQt5.QtGui import QIcon
@@ -14,6 +14,7 @@ from PyQt5.QtGui import QIcon
 from core import constants
 from core import registry
 from dialogs.artist_dialog import ArtistDialog
+from dialogs.confirm_dialog import ConfirmDialog
 
 
 _COLUMNS = ["Username", "Name", "Department", "Role", "Permissions", "Email"]
@@ -208,13 +209,14 @@ class ArtistsTab(QWidget):
         username = self._selected_username()
         if not username:
             return
-        reply = QMessageBox.question(
-            self, "Delete Artist",
+        dlg = ConfirmDialog(
+            "Delete Artist",
             f"Remove '{username}' from the registry?\nThis cannot be undone.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            confirm_label="Delete",
+            danger=True,
+            parent=self,
         )
-        if reply != QMessageBox.Yes:
+        if dlg.exec_() != QDialog.Accepted:
             return
         self._artists = [a for a in self._artists if a.get("username", "").lower() != username.lower()]
         registry.save_artists(self._artists)

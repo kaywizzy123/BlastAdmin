@@ -27,6 +27,7 @@
   - [Studio tab](#studio-tab)
   - [Artists tab](#artists-tab)
   - [Departments tab](#departments-tab)
+  - [Review Types tab](#review-types-tab)
   - [Security tab](#security-tab)
 - [How Data Is Stored](#how-data-is-stored)
   - [The shared registry — `artists.json`](#the-shared-registry--artistsjson)
@@ -38,6 +39,7 @@
 - [Packaging as an Executable](#packaging-as-an-executable)
 - [Troubleshooting](#troubleshooting)
 - [Security Notes](#security-notes)
+- [License](#license)
 
 ---
 
@@ -50,6 +52,7 @@
 | Studio name           | Shared registry (`artists.json`) + local config |
 | Artist roster         | Shared registry (`artists.json`)                |
 | Department list       | Shared registry (`artists.json`) + local config |
+| Review types          | Shared registry (`artists.json`) + local config |
 | Admin PIN (hashed)    | Shared registry (`artists.json`) + local config |
 
 BlastAdmin **does not import or depend on BlastVault**. It reads and writes `artists.json` directly. That file normally sits on a shared network drive, so a change made in BlastAdmin reaches every workstation the next time BlastVault launches.
@@ -62,6 +65,7 @@ BlastAdmin **does not import or depend on BlastVault**. It reads and writes `art
 - **Artist management:** add, edit, and delete artists. You can search across every field, edit with a double-click, and use a right-click context menu.
 - **Permission levels:** give each artist `admin`, `reviewer`, or `basic` access. Each level is colour-coded in the table.
 - **Department management:** keep the list of departments shown in artist dropdowns up to date. It comes pre-filled with 15 standard animation-pipeline departments.
+- **Review type management:** edit the list of review types (Director Dailies, Final Review, and so on).
 - **Admin PIN:** set, change, or remove a PIN. It locks BlastAdmin on launch and is shared with BlastVault so artists can unlock status editing.
 - **First-run wizard:** a welcome dialog walks a new TD through the initial setup.
 - **Safe registry handling:** an existing `artists.json` is never overwritten with an empty artist list. Only the fields you change are updated.
@@ -86,7 +90,7 @@ The only third-party dependency is **PyQt5**.
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url> BlastAdmin
+git clone https://github.com/kaywizzy123/BlastAdmin.git
 cd BlastAdmin
 
 # 2. (Recommended) create a virtual environment
@@ -111,7 +115,7 @@ python main.py
 On launch, BlastAdmin:
 
 1. Loads its local config (`bladmin_config.json`).
-2. Reads the admin PIN hash from `artists.json` if the local config doesn't have one.
+2. Reads the admin PIN hash from `artists.json`. The registry value always wins, so a PIN set, changed, or removed on one TD machine applies to every machine on its next launch. If the registry can't be reached, the last-known PIN from the local config is used.
 3. Shows the **First-Run** dialog if no local config exists yet.
 4. Asks for the **admin PIN** if one is set.
 5. Opens the main window.
@@ -150,7 +154,7 @@ A wrong PIN clears the field and shows an error. **Cancel** closes the applicati
 
 ## Using BlastAdmin
 
-The main window has a header bar with the **active registry path**. If the file can't be found, the path turns red and shows `⚠ file not found`. Below the header are four tabs.
+The main window has a header bar with the **active registry path**. If the file can't be found, the path turns red and shows `⚠ file not found`. Below the header are five tabs.
 
 ### Studio tab
 
@@ -238,6 +242,18 @@ Default departments, grouped by pipeline stage:
 
 Every change is saved to **both** `artists.json` (key `departments`) and the local config.
 
+### Review Types tab
+
+<p align="center">
+  <img src="docs/screenshots/12_review_types_tab.png" width="820" alt="Review Types tab">
+</p>
+
+This tab manages the kinds of review sessions artists can submit to. It works exactly like the Departments tab: search, add, edit, delete, and right-click options, with duplicates rejected.
+
+The defaults are **Director Dailies**, **Head of Animation Rounds**, **Supervisor Review**, **CG Supervisor Review**, and **Final Review**.
+
+Every change is saved to **both** `artists.json` (key `review_types`) and the local config.
+
 > ℹ️ Renaming or deleting a department **does not** update artists already assigned to it. Update those artists on the Artists tab.
 
 ### Security tab
@@ -260,7 +276,9 @@ The admin PIN does two jobs:
   <img src="docs/screenshots/08_pin_setup.png" width="340" alt="Set / change PIN dialog">
 </p>
 
-You type the new PIN twice to confirm it. The PIN is stored as a SHA-256 hash in both `artists.json` (`admin_pin_hash`) and the local config, so it applies across the studio.
+You type the new PIN twice to confirm it. The PIN is stored as a SHA-256 hash in both `artists.json` (`admin_pin_hash`) and the local config, so it applies across the studio. Every BlastAdmin install picks up the registry's PIN on its next launch.
+
+**Remove PIN** clears the hash everywhere. Without a PIN, BlastAdmin opens without asking for one, and artists can't unlock status editing in BlastVault until a new PIN is set.
 
 ---
 
@@ -358,14 +376,16 @@ BlastAdmin/
 ├── tabs/
 │   ├── studio_tab.py          # Studio name + registry path
 │   ├── artists_tab.py         # Artist table with CRUD, search, context menu
-│   ├── departments_tab.py     # Department list CRUD
+│   ├── departments_tab.py     # Department list (ListEditorTab)
+│   ├── review_types_tab.py    # Review type list (ListEditorTab)
 │   └── security_tab.py        # Admin PIN management
 ├── dialogs/
 │   ├── first_run_dialog.py    # Welcome / initial setup wizard
 │   ├── auth_dialog.py         # PinAuthDialog (launch) + PinSetupDialog (set/change)
 │   ├── artist_dialog.py       # Add / Edit artist form
 │   └── confirm_dialog.py      # Reusable styled confirm dialog
-├── widgets/                   # Reserved for shared custom widgets
+├── widgets/
+│   └── list_editor_tab.py     # Reusable searchable name-list editor
 ├── icons/                     # PNG/SVG icon set (app icon: bv.png)
 └── docs/screenshots/          # Images used in this README
 ```
@@ -413,7 +433,7 @@ pyinstaller --noconsole --name BlastAdmin --icon icons/bv.png --add-data "icons;
 | Artists tab is empty | The registry path points to the wrong file, or the file has no `artists` key. Check the status line on the Studio tab. |
 | `File found but could not be read` | `artists.json` is not valid JSON. Fix it in a text editor, or restore it from backup. |
 | "Duplicate Username" warning | Usernames must be unique (case-insensitive). |
-| Forgot the admin PIN | Close BlastAdmin. Remove `admin_pin_hash` (or set it to `""`) in **both** `bladmin_config.json` and `artists.json`, then relaunch and set a new PIN. |
+| Forgot the admin PIN | Close BlastAdmin. Set `admin_pin_hash` to `""` in `artists.json`, then relaunch. BlastAdmin picks up the empty value from the registry and opens without a PIN. Set a new PIN on the Security tab. |
 | Want to rerun the first-run wizard | Delete the local `bladmin_config.json`. |
 | `TypeError: unsupported operand type(s) for \|` on startup | You're on Python older than 3.10. Upgrade Python. |
 
@@ -423,6 +443,12 @@ pyinstaller --noconsole --name BlastAdmin --icon icons/bv.png --add-data "icons;
 
 - The admin PIN is stored as an **unsalted SHA-256 hash**. That stops casual reading, but a short numeric PIN can be brute-forced by anyone who can read `artists.json`. Use a longer PIN, and protect the registry with network-share permissions. **Write access to `artists.json` is effectively admin access.**
 - BlastAdmin trusts the filesystem. There is no server-side authentication, so anyone who can edit the registry file directly can change artists and permissions.
+
+---
+
+## License
+
+BlastAdmin is released under the [MIT License](LICENSE).
 
 ---
 

@@ -8,6 +8,7 @@ Manages:
 
 Completely independent of BlastVault — reads and writes artists.json directly.
 """
+import json
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -26,6 +27,7 @@ from core.styles import stylesheet
 from tabs.studio_tab      import StudioTab
 from tabs.artists_tab     import ArtistsTab
 from tabs.departments_tab import DepartmentsTab
+from tabs.review_types_tab import ReviewTypesTab
 from tabs.security_tab    import SecurityTab
 
 
@@ -88,11 +90,13 @@ class MainWindow(QMainWindow):
         self._studio_tab      = StudioTab()
         self._artists_tab     = ArtistsTab()
         self._departments_tab = DepartmentsTab()
+        self._review_types_tab = ReviewTypesTab()
         self._security_tab    = SecurityTab()
 
         self._tabs.addTab(self._studio_tab,      "  Studio  ")
         self._tabs.addTab(self._artists_tab,     "  Artists  ")
         self._tabs.addTab(self._departments_tab, "  Departments  ")
+        self._tabs.addTab(self._review_types_tab, "  Review Types  ")
         self._tabs.addTab(self._security_tab,    "  Security  ")
         self._tabs.currentChanged.connect(self._on_tab_changed)
         self._studio_tab.registry_changed.connect(self._on_registry_changed)
@@ -123,10 +127,9 @@ class MainWindow(QMainWindow):
 
     def _on_tab_changed(self, index: int):
         self._refresh_path_label()
-        if index == 1:
-            self._artists_tab.refresh()
-        elif index == 2:
-            self._departments_tab.refresh()
+        tab = self._tabs.widget(index)
+        if tab in (self._artists_tab, self._departments_tab, self._review_types_tab):
+            tab.refresh()
 
 
 def main():
@@ -142,14 +145,20 @@ def main():
     is_first_run = not constants.CONFIG_PATH.exists()
     load_config()
 
-    # ── Load PIN from artists.json if not already in local config ──────── #
+    # ── Admin PIN — artists.json is authoritative when present ─────────── #
+    # A PIN set, changed or removed on any TD machine is written to the
+    # registry, so every machine follows it on its next launch. The local
+    # config keeps the last-known hash for when the registry is unreachable.
     reg_path = registry.registry_path()
     if reg_path.exists():
         try:
-            import json
             reg_data = json.loads(reg_path.read_text(encoding="utf-8"))
-            if not constants.ADMIN_PIN_HASH and reg_data.get("admin_pin_hash"):
-                constants.ADMIN_PIN_HASH = reg_data["admin_pin_hash"]
+            if "admin_pin_hash" in reg_data:
+                reg_hash = reg_data["admin_pin_hash"] or ""
+                if reg_hash != constants.ADMIN_PIN_HASH:
+                    constants.ADMIN_PIN_HASH = reg_hash
+                    if not is_first_run:
+                        save_config()
         except Exception:
             pass
 

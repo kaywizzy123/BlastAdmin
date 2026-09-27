@@ -162,7 +162,8 @@ class SecurityTab(QWidget):
         reply = QMessageBox.question(
             self, "Remove PIN",
             "Remove the admin PIN?\n\n"
-            "Artists will be able to unlock status editing in BlastVault without a PIN.",
+            "Without a PIN, artists cannot unlock status editing in BlastVault,\n"
+            "and BlastAdmin will open without asking for one.",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
